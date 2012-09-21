@@ -1,5 +1,4 @@
 
-var util  = require('util');
 var OAuth = require('./oauth/oauth').OAuth;
 
 var ePatient = exports.ePatient = {}; 
@@ -42,10 +41,15 @@ ePatient.OAuth = function() {
    return {
         requestToken : function() {
             buildOa().getOAuthRequestToken( function ( error, token, secret, results ) {
-                util.puts( 'error: ' + error + "\ntoken: " + token + "\nsecret: " + secret + "\nresults: " + results );
-                console.log(results);
-                console.log(error);
+                if ( ! token || ! secret || error ) {
+                    ePatient.Response.errors.push("Error when requesting OAuth token");
+                    console.log( error || 'No error object' );
+                }
             } );
         }
    };
 }();
+
+ePatient.Response = {
+    errors : []
+};
