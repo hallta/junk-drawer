@@ -1,27 +1,17 @@
 
 var querystring = require('querystring');
 var http        = require('http');
-console.log( require('./oauth') );
+
+exports.OAuth = require("./node-oauth/oauth").OAuth;
+
 trevor = {
-oauth : function() {
-            return;
-            var accessor = {
-consumerSecret: 'alskjfklsfjd', 
-                tokenSecret   : 'lkjskldfjsdj' };        
-            var message = { action: 'POST' 
-                , method: '/app/auth', 
-                    parameters: []
-            };
-            OAuth.setTimestampAndNonce(message);
-            OAuth.SignatureMethod.sign(message, accessor);
-            var parameterMap = OAuth.getParameterMap(message.parameters);
+    oauth : function() {
+    },
 
-            console.log(parameterMap);
-
-        },
     say : function() {   
         return 'Trevor says so!';
     },
+
     ping : function(data) {
         data = querystring.stringify(data);
 
