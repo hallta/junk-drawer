@@ -1,0 +1,159 @@
+package Backup;
+use strict;
+use warnings;
+
+use Time::HiRes ();
+use Proc::PID::File;
+use Data::Dumper;
+
+use constant {
+    ARCHIVE      => 1,
+    NOARCHIVE    => 0,
+    DELETE       => 1,
+    NODELETE     => 0,
+
+    WEEKLY       => 604800,
+    DAILY        => 86400,
+    HOURLY       => 60,
+    ALWAYS       => 0,
+
+    DEFAULT_PORT => 22,
+
+    DEBUG        => 1,
+    RAID         => 0,
+};
+
+my %CONFIG = ();
+my $store  = '/mnt/backup';
+my $rstore = "${store}1";
+my $ustore = '/mnt/backup';
+
+sub new {
+    my $self = bless( {}, shift );
+
+    return $self;
+}
+
+sub register {
+    my ( undef, $host, $dir, $archive, $delete, $period, $port, $user ) = @_;
+
+    push( @{ $CONFIG{'hosts'}{$host} ||= [] }, $dir );
+    $CONFIG{'archive'}{$host} = $archive || NOARCHIVE;
+    $CONFIG{'delete'}{$host}  = $delete  || NODELETE; 
+    $CONFIG{'period'}{$host}  = $period;
+    $CONFIG{'port'}{$host}    = $port;
+    $CONFIG{'user'}{$host}    = $user;
+
+    return;
+}
+
+sub backup {
+    my ( $self ) = @_;
+
+    if ( Proc::PID::File->running( { 'dir' => '/home/trevor' } ) ) {
+        warn "** BACKUP PROCESS DETECTED, EXITING! **";
+        return;
+    }
+
+    my $start = Time::HiRes::time();
+    print "Starting at \"$start\" \n";
+    print "---------------------------------------------\n";
+
+    my $meta_dir = "$ustore/.backup_meta";
+    note( qq{/bin/mkdir $store/.backup_meta} ) unless ( -d $meta_dir );
+    note( qq{. /home/trevor/.ssh-agent-bc010} );
+
+    foreach my $server ( keys %{ $CONFIG{'hosts'} } ) {
+        print "Initializing backup on $server\n";
+
+        my $last_backup      = ALWAYS;
+        my $last_backup_file = "$meta_dir/$server";
+        if ( -r $last_backup_file ) {
+            $last_backup = do {
+                open( my $file, '<', $last_backup_file );
+                local $/ = undef;
+                my $c = <$file>;
+                chomp($c);
+                close( $file );
+                $c;
+            };
+        }
+
+        my $backed = 0;
+
+        foreach my $dir ( @{ $CONFIG{'hosts'}{$server} } ) {
+            print "\t$dir ... ";
+
+            my $backup_location = "$store/backup/$server";
+            my $raid_location   = "$rstore/backup/$server";
+
+            if ( $CONFIG{'archive'}{$server} ) {
+                print "Archive Mode ... ";
+                $backup_location = "$backup_location/`/bin/date +%F`";
+            }
+
+            print "Last backup at \"$last_backup\" ... ";
+
+            if ( time > ( $last_backup + $CONFIG{'period'}{$server} ) ) {
+                print "Period breached ... ";
+
+                $backup_location = "${backup_location}${dir}";
+                $raid_location   = "${raid_location}${dir}";
+                my $port         = $CONFIG{'port'}{$server} || DEFAULT_PORT;
+                my $user         = $CONFIG{'user'}{$server} || scalar( getpwuid($<) ) || $<;
+                my $delete       = ( $CONFIG{'delete'}{$server} ) ? ' --del ' : '';
+
+                note( qq|/bin/mkdir -p $backup_location > /dev/null 2>&1| );
+                note( qq|/bin/mkdir -p $raid_location > /dev/null 2>&1| ) if ( RAID );
+                note( qq{/usr/bin/rsync --rsh '/usr/bin/ssh -p $port' $delete -aq $user\@$server:$dir $backup_location > /home/trevor/logs/$server-backup.log 2>&1} );
+                note( qq{/usr/bin/rsync $delete -aq $backup_location $raid_location >> /home/trevor/logs/$server-raid.log 2>&1} ) if (RAID);
+                $backed = 1;
+            }
+            else {
+                print time . " did not breach " . ( $last_backup + $CONFIG{'period'}{$server} );
+            }
+
+        }
+
+        if ( $backed ) {
+            open( my $file, '>', $last_backup_file );
+            print $file time;
+            close( $file );
+        }
+
+        print "\n"; 
+        print "---------------------------------------------\n";
+        print 'Completed in "' . sprintf( '%0.2f', (  Time::HiRes::time() - $start ) ) . "\" seconds.\n"; 
+    }
+}
+
+sub note {
+    my ( @commands ) = @_;
+
+    foreach my $command ( @commands ) {
+        my $result = qx/$command/;
+        next unless ( DEBUG );
+
+        $result ||= '<SUCCESS>';
+        chomp($result);
+        $result =~ s/\n//g;
+        warn "\t\"$command\" ... ($result)\n"
+    }
+}
+
+package main;
+use strict;
+use warnings;
+
+use Data::Dumper;
+use YAML 'LoadFile';
+
+my %config = %{ LoadFile('/home/' . getpwuid($<) . '/config/backup.yml') };
+
+my ($proc)  = $0 =~ /^.*\/(\w+)/;
+$proc     ||= $0;
+
+Backup->register(@$_) foreach ( @{ $config{$proc} } );
+Backup->backup();
+
+1;
