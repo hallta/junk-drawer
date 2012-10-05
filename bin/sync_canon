@@ -1,0 +1,3 @@
+#!/bin/sh
+
+rsync -va /Volumes/NO\ NAME/DCIM/100CANON/ /Volumes/250G/Pictures/Canon\ T2i/ 
