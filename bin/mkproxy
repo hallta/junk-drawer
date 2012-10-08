@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# /usr/bin/ssh -q -N -T -C -o TCPKeepAlive=yes -o ServerAliveInterval=10 -D localhost:9999 -p 42040 64.22.109.119 &
+/usr/bin/ssh -q -N -T -C -o TCPKeepAlive=yes -o ServerAliveInterval=10 -D localhost:9999 valdez &
+sleep 2
+
+echo "Proxy on localhost:9999 created!"

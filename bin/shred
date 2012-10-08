@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# dd count=100 if=/dev/zero of=file
+for file in $*
+do
+    count=`ls -lt $file | perl -lne '/^..........\s+\d+\s+\w+\s+\w+\s+(\d+).*$/; print int( $1 / 512 )'`
+
+    for i in \
+        /dev/zero \
+        /dev/random \
+        /dev/zero
+    do
+        dd count=$count if=$i of=$file
+    done
+
+    /bin/rm $file
+done
