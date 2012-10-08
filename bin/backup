@@ -87,11 +87,6 @@ sub backup {
             my $backup_location = "$store/backup/$server";
             my $raid_location   = "$rstore/backup/$server";
 
-            if ( $CONFIG{'archive'}{$server} ) {
-                print "Archive Mode ... ";
-                $backup_location = "$backup_location/`/bin/date +%F`";
-            }
-
             print "Last backup at \"$last_backup\" ... ";
 
             if ( time > ( $last_backup + $CONFIG{'period'}{$server} ) ) {
