@@ -517,7 +517,7 @@ exports.OAuth.prototype.getOAuthRequestToken= function( extraParams, callback ) 
       var oauth_token_secret= results["oauth_token_secret"];
       delete results["oauth_token"];
       delete results["oauth_token_secret"];
-      callback(null, oauth_token, oauth_token_secret,  results );
+      callback(null, oauth_token, oauth_token_secret,  results, data );
     }
   });
 }
